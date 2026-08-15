@@ -1,11 +1,34 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2, Globe, Lock } from "lucide-react";
+import { Trash2, Globe, Lock, Download } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SiteNav } from "@/components/SiteNav";
 import { Button } from "@/components/ui/button";
+
+function slugify(title: string) {
+  return (
+    title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "game"
+  );
+}
+
+function downloadHtml(title: string, code: string) {
+  const blob = new Blob([code], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slugify(title)}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export const Route = createFileRoute("/games")({
   head: () => ({
@@ -22,6 +45,24 @@ export const Route = createFileRoute("/games")({
 function GamesPage() {
   const { user, loading } = useAuth();
   const qc = useQueryClient();
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
+  async function exportGame(id: string, title: string) {
+    setExportingId(id);
+    try {
+      const { data, error } = await supabase
+        .from("games")
+        .select("code")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      downloadHtml(title, data.code);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setExportingId(null);
+    }
+  }
 
   const { data: games, isLoading } = useQuery({
     queryKey: ["my-games", user?.id],
@@ -95,6 +136,15 @@ function GamesPage() {
                 <Button size="sm" variant="arcade" onClick={() => togglePublic(g.id, !g.is_public)}>
                   {g.is_public ? <Globe className="size-4" /> : <Lock className="size-4" />}
                   {g.is_public ? "Public" : "Private"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={exportingId === g.id}
+                  onClick={() => exportGame(g.id, g.title)}
+                >
+                  <Download className="size-4" />
+                  {exportingId === g.id ? "Exporting…" : "Export"}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => remove(g.id)}>
                   <Trash2 className="size-4" />

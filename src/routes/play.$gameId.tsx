@@ -1,9 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+
+function slugify(title: string) {
+  return (
+    title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "game"
+  );
+}
+
+function downloadGame(title: string, code: string) {
+  const blob = new Blob([code], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slugify(title)}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export const Route = createFileRoute("/play/$gameId")({
   head: () => ({
@@ -45,9 +67,19 @@ function PlayPage() {
         <span className="truncate font-pixel text-[10px] text-neon">
           {data?.title ?? "Loading…"}
         </span>
-        <Button size="sm" variant="arcade" onClick={() => setReloadKey((k) => k + 1)}>
-          <RotateCcw className="size-4" /> Restart
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!data}
+            onClick={() => data && downloadGame(data.title, data.code)}
+          >
+            <Download className="size-4" /> Export
+          </Button>
+          <Button size="sm" variant="arcade" onClick={() => setReloadKey((k) => k + 1)}>
+            <RotateCcw className="size-4" /> Restart
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1">
