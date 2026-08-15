@@ -43,7 +43,11 @@ function Index() {
 
   async function submit() {
     const idea = prompt.trim();
-    if (idea.length < 3) return toast.error("Describe your game idea first");
+    if (idea.length < 3) {
+      toast.error("Describe your game idea first");
+      return;
+    }
+
     if (!loading && !user) {
       toast.error("Sign in to generate your game");
       navigate({ to: "/auth" });
